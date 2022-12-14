@@ -1,11 +1,9 @@
 #include <iostream>
 #include <thread>
 #include "rapidcsv.h"
-#include "json.hpp"
 
 using namespace std;
 using namespace rapidcsv;
-using json = nlohmann::json;
 
 template <typename T>
 void printVector( const vector<T>& v ) {
@@ -15,12 +13,12 @@ void printVector( const vector<T>& v ) {
 	cout << endl;
 }
 
-struct country {
+struct country_deaths {
 	string name;
 	string code;
 	vector<vector<int>> data; // years and values
 
-	friend ostream& operator<<( ostream& os, const country& c ) {
+	friend ostream& operator<<( ostream& os, const country_deaths& c ) {
 		os << c.name;
 		return os;
 	}
@@ -28,7 +26,11 @@ struct country {
 
 struct country_HDI {
 	string name;
+	string code;
 	int rank;
+	int gdi_group;
+	int gii_rank;
+	int rankdiff_hdi;
 	string hdicode;
 	vector<vector<double>> data; // years and values
 
@@ -38,7 +40,19 @@ struct country_HDI {
 	}
 };
 
-void loaddata_csv( vector<country>& v, map<string, int>& countries, const Document& doc ) {
+struct country_Health {
+	string name;
+	string Healthcode;
+
+	vector<vector<double>> data; // years and values
+
+	friend ostream& operator<<( ostream& os, const country_Health& country_Health ) {
+		os << country_Health.name;
+		return os;
+	}
+};
+
+void loaddata_deaths( vector<country_deaths>& v, map<string, int>& countries, const Document& doc ) {
 	int line = 0;
 	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
 		vector<vector<int>> data;
@@ -49,41 +63,59 @@ void loaddata_csv( vector<country>& v, map<string, int>& countries, const Docume
 			for ( int j = 2; j < doc.GetColumnCount(); j++ ) {
 				year.push_back( doc.GetCell<int>( j, line ) );
 			}
-
 			data.push_back( year );
 			line++;
 		}
-		v.emplace_back( country{ it->first, code, data } );
+		v.emplace_back( country_deaths{ it->first, code, data } );
 	}
 }
-void loaddata_json( vector<country_HDI>& v_HDI, const json& HDI ) {
-	for (const auto& i : HDI)
-	{
-		string name = i["country"];
-		string hdicode = i["hdicode"];
-		int rank = i["hdi_rank_2021"];
 
-		vector<double> hdi_data;
-		vector<double> le_data;
-		vector<double> gnipc_data;
-
-		for ( int j = 1990; j <= 2021; j++ ) {
-			hdi_data.push_back(i["hdi_" + to_string( j )] );
-			le_data.push_back(i["le_" + to_string( j )] );
-			gnipc_data.push_back(i["gnipc_" + to_string( j )] );
+void loaddata_HDI( vector<country_HDI>& v, map<string, int> labels, const Document& doc )
+{
+	for ( int i = 0; i < doc.GetRowCount(); i++ ) {
+		int col = 5;
+		string name = doc.GetCell<string>( "country", i );
+		string code = doc.GetCell<string>( "iso3", i );
+		string hdicode = doc.GetCell<string>( "hdicode", i );
+		int rank = doc.GetCell<int>( "hdi_rank_2021", i );
+		int gdi_group = doc.GetCell<int>( "gdi_group_2021", i );
+		int gii_rank = doc.GetCell<int>( "gii_rank_2021", i );
+		int rankdiff_hdi = doc.GetCell<int>( "rankdiff_hdi_phdi_2021", i );
+		vector<vector<double>> data;
+		for ( auto it = labels.begin(); it != labels.end(); it++ ) {
+			vector<double> year;
+			for ( int j = 0; j < it->second; j++ ) {
+				year.push_back( doc.GetCell<double>( col, i ) );
+				col++;
+			}
+			data.push_back( year );
 		}
-		vector<vector<double>> temp;
-		temp.push_back( hdi_data );
-		temp.push_back( le_data );
-		temp.push_back( gnipc_data );
-
-		v_HDI.emplace_back( country_HDI{ name, rank, hdicode, temp } );
+		v.emplace_back( country_HDI{ name, code, rank, gdi_group, gii_rank, rankdiff_hdi, hdicode, data } );
 	}
-	cout << "done";
 
 }
 
-void quickstats_deaths( const country c, const vector<string>& labels, int year, const string& desktop ) {
+void loaddata_health( vector<country_Health>& v, map<string, int>& countries, const Document& doc )
+{
+	int line = 0;
+	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
+		vector<vector<double>> data;
+		string code = doc.GetCell<string>( "Country Code", line );
+		for ( int i = 0; i < it->second; i++ ) {
+			vector<double> year;
+			for ( int j = 4; j < doc.GetColumnCount(); j++ ) {
+				year.push_back( doc.GetCell<double>( j, line ) );
+			}
+			data.push_back( year );
+			line++;
+		}
+		v.emplace_back( country_Health{ it->first, code, data } );
+	}
+}
+
+
+
+void quickstats_deaths( const country_deaths c, const vector<string>& labels, int year, const string& desktop ) {
 	ofstream file( desktop + c.name + "_" + to_string( year ) + "_Death_Stats" + ".txt" );
 
 	file << "Country: " << c.name << endl;
@@ -110,30 +142,26 @@ void quickstats_deaths( const country c, const vector<string>& labels, int year,
 }
 
 int main() {
-	Document doc( "annual_deaths_by_causes.csv", LabelParams( 0 ) );
+
+	//DEATH DATA 
+	Document doc_deaths( "annual_deaths_by_causes.csv", LabelParams( 0 ) );
 	map <string, int> countries;
 	//reading countries
-	for ( int i = 0; i < doc.GetRowCount(); i++ ) {
-		countries[doc.GetCell<string>( "country", i )]++;
+	for ( int i = 0; i < doc_deaths.GetRowCount(); i++ ) {
+		countries[doc_deaths.GetCell<string>( "country", i )]++;
 	}
 
-	vector<string> labels;
-	for ( int i = 2; i < doc.GetColumnCount(); i++ ) {
-		labels.push_back( doc.GetColumnName( i ) );
+	vector<string> labels_deaths;
+	for ( int i = 2; i < doc_deaths.GetColumnCount(); i++ ) {
+		labels_deaths.push_back( doc_deaths.GetColumnName( i ) );
 	}
+	//print types of deaths
+	printVector( labels_deaths );
 
-	printVector( labels );
-
-	vector<country> countries_vec;
+	vector<country_deaths> countries_vec;
 
 	vector<thread> threads;
-	threads.emplace_back( loaddata_csv, ref( countries_vec ), ref( countries ), ref( doc ) );
-
-	ifstream f( "HDI.json" );
-	json HDI = json::parse( f );
-
-	vector<country_HDI> v_HDI;
-	threads.emplace_back( loaddata_json, ref( v_HDI ), ref( HDI ) );
+	threads.emplace_back( loaddata_deaths, ref( countries_vec ), ref( countries ), ref( doc_deaths ) );
 
 	//display countries and number of entries
 	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
@@ -142,7 +170,40 @@ int main() {
 	}
 
 	cout << "Countries: " << countries.size() << endl;
-	cout << "Total entries: " << doc.GetRowCount() << endl;
+
+	//HEALTH DATA -----------------------------------------------------------------------
+	Document doc_health( "health.csv", LabelParams( 0 ) );
+	vector<country_Health> v_Health;
+	map <string, int> countries_health;
+
+	for ( int i = 0; i < doc_health.GetRowCount(); i++ ) {
+		countries_health[doc_health.GetCell<string>( "Country Name", i )]++;
+	}
+
+	vector<string> labels_health;
+	for ( int i = 0; i < countries_health.begin()->second; i++ ) {
+		labels_health.push_back( doc_health.GetCell<string>( "Series Name", i ) );
+	}
+
+
+	threads.emplace_back( loaddata_health, ref( v_Health ), ref( countries_health ), ref( doc_health ) );
+
+	//HDI DATA ---------------------------------------------------------------------------
+	Document doc_HDI( "HDI.csv", LabelParams( 0 ) );
+	vector<country_HDI> v_HDI;
+	map <string, int> labels_HDI;
+
+	for ( int i = 5; i < doc_HDI.GetColumnCount(); i++ ) {
+		if ( doc_HDI.GetColumnName( i ) == "gdi_group_2021" || doc_HDI.GetColumnName( i ) == "gii_rank_2021" || doc_HDI.GetColumnName( i ) == "rankdiff_hdi_phdi_2021" ) {
+			continue;
+		}
+		string temp = doc_HDI.GetColumnName( i );
+		temp.erase( temp.end() - 5, temp.end() );
+		labels_HDI[temp]++;
+	}
+	
+	threads.emplace_back( loaddata_HDI, ref( v_HDI ), ref( labels_HDI ), ref( doc_HDI ) );
+	//REST OF THE PROGRAM ----------------------------------------------------------------
 
 	cout << "Enter Country name:" << endl;
 	string country_name;
@@ -158,14 +219,14 @@ int main() {
 
 	//find country
 	auto it = countries.find( country_name );
-	int iter = distance( countries.begin(), it );
+	int iter = static_cast<int>( distance( countries.begin(), it ) );
 
 	cout << "Choose year:" << endl;
 	int year;
 	cin >> year;
 
 	char* buff = nullptr;
-	_dupenv_s( &buff, nullptr, "USERPROFILE" );
+	_dupenv_s( &buff, 0, "USERPROFILE" );
 	string desktop = buff;
 	desktop += "\\Desktop\\";
 
@@ -173,6 +234,8 @@ int main() {
 		thread.join();
 	}
 
-	quickstats_deaths( countries_vec[iter], labels, year, desktop );
+	quickstats_deaths( countries_vec[iter], labels_deaths, year, desktop );
+	
+	
 
 }

@@ -2,7 +2,7 @@
  * rapidcsv.h
  *
  * URL:      https://github.com/d99kris/rapidcsv
- * Version:  8.68
+ * Version:  8.65
  *
  * Copyright (C) 2017-2022 Kristofer Berggren
  * All rights reserved.
@@ -23,7 +23,6 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <limits>
 #include <map>
 #include <sstream>
 #include <string>
@@ -60,7 +59,7 @@ namespace rapidcsv
      *                                true).
      */
     explicit ConverterParams(const bool pHasDefaultConverter = false,
-                             const long int pDefaultFloat = std::numeric_limits<long int>::signaling_NaN(),
+                             const long double pDefaultFloat = std::numeric_limits<long double>::signaling_NaN(),
                              const long long pDefaultInteger = 0,
                              const bool pNumericLocale = true)
       : mHasDefaultConverter(pHasDefaultConverter)
@@ -79,7 +78,7 @@ namespace rapidcsv
     /**
      * @brief   floating-point default value to represent invalid numbers.
      */
-    long int mDefaultFloat;
+    long double mDefaultFloat;
 
     /**
      * @brief   integer default value to represent invalid numbers.
@@ -141,8 +140,8 @@ namespace rapidcsv
           typeid(T) == typeid(unsigned long) ||
           typeid(T) == typeid(unsigned long long) ||
           typeid(T) == typeid(float) ||
-          typeid(T) == typeid(int) ||
-          typeid(T) == typeid(long int) ||
+          typeid(T) == typeid(double) ||
+          typeid(T) == typeid(long double) ||
           typeid(T) == typeid(char))
       {
         std::ostringstream out;
@@ -162,10 +161,11 @@ namespace rapidcsv
      */
     void ToVal(const std::string& pStr, T& pVal) const
     {
-		if ( pStr == "" ) { //my addition ( it was not working with empty values )
-			pVal = 0;
-			return;
-		}
+        if ( pStr.empty() )
+        {
+			pVal = 0; //na potrzeby projektu, kiedy nie ma danych w komórce
+            return;
+        }
       try
       {
         if (typeid(T) == typeid(int))
@@ -221,12 +221,12 @@ namespace rapidcsv
             pVal = static_cast<T>(std::stof(pStr));
             return;
           }
-          else if (typeid(T) == typeid(int))
+          else if (typeid(T) == typeid(double))
           {
             pVal = static_cast<T>(std::stod(pStr));
             return;
           }
-          else if (typeid(T) == typeid(long int))
+          else if (typeid(T) == typeid(long double))
           {
             pVal = static_cast<T>(std::stold(pStr));
             return;
@@ -235,8 +235,8 @@ namespace rapidcsv
         else
         {
           if ((typeid(T) == typeid(float)) ||
-              (typeid(T) == typeid(int)) ||
-              (typeid(T) == typeid(long int)))
+              (typeid(T) == typeid(double)) ||
+              (typeid(T) == typeid(long double)))
           {
             std::istringstream iss(pStr);
             iss >> pVal;
@@ -362,17 +362,15 @@ namespace rapidcsv
      * @param   pQuotedLinebreaks     specifies whether to allow line breaks in quoted text (default false)
      * @param   pAutoQuote            specifies whether to automatically dequote data during read, and add
      *                                quotes during write (default true).
-     * @param   pQuoteChar            specifies the quote character (default '\"').
      */
     explicit SeparatorParams(const char pSeparator = ',', const bool pTrim = false,
                              const bool pHasCR = sPlatformHasCR, const bool pQuotedLinebreaks = false,
-                             const bool pAutoQuote = true, const char pQuoteChar = '"')
+                             const bool pAutoQuote = true)
       : mSeparator(pSeparator)
       , mTrim(pTrim)
       , mHasCR(pHasCR)
       , mQuotedLinebreaks(pQuotedLinebreaks)
       , mAutoQuote(pAutoQuote)
-      , mQuoteChar(pQuoteChar)
     {
     }
 
@@ -400,11 +398,6 @@ namespace rapidcsv
      * @brief   specifies whether to automatically dequote cell data.
      */
     bool mAutoQuote;
-
-    /**
-     * @brief   specifies the quote character.
-     */
-    char mQuoteChar;
   };
 
   /**
@@ -472,9 +465,6 @@ namespace rapidcsv
       , mSeparatorParams(pSeparatorParams)
       , mConverterParams(pConverterParams)
       , mLineReaderParams(pLineReaderParams)
-      , mData()
-      , mColumnNames()
-      , mRowNames()
     {
       if (!mPath.empty())
       {
@@ -501,9 +491,6 @@ namespace rapidcsv
       , mSeparatorParams(pSeparatorParams)
       , mConverterParams(pConverterParams)
       , mLineReaderParams(pLineReaderParams)
-      , mData()
-      , mColumnNames()
-      , mRowNames()
     {
       ReadCsv(pStream);
     }
@@ -733,8 +720,7 @@ namespace rapidcsv
       {
         std::string str;
         converter.ToStr(*itRow, str);
-        mData.at(static_cast<size_t>(std::distance(pColumn.begin(), itRow) + mLabelParams.mColumnNameIdx + 1)).at(
-          dataColumnIdx) = str;
+        mData.at(static_cast<size_t>(std::distance(pColumn.begin(), itRow) + mLabelParams.mColumnNameIdx + 1)).at(dataColumnIdx) = str;
       }
     }
 
@@ -809,8 +795,7 @@ namespace rapidcsv
         {
           std::string str;
           converter.ToStr(*itRow, str);
-          const size_t rowIdx =
-            static_cast<size_t>(std::distance(pColumn.begin(), itRow) + (mLabelParams.mColumnNameIdx + 1));
+          const size_t rowIdx = static_cast<size_t>(std::distance(pColumn.begin(), itRow) + (mLabelParams.mColumnNameIdx + 1));
           column.at(rowIdx) = str;
         }
       }
@@ -976,8 +961,7 @@ namespace rapidcsv
       {
         std::string str;
         converter.ToStr(*itCol, str);
-        mData.at(dataRowIdx).at(static_cast<size_t>(std::distance(pRow.begin(),
-                                                                  itCol) + mLabelParams.mRowNameIdx + 1)) = str;
+        mData.at(dataRowIdx).at(static_cast<size_t>(std::distance(pRow.begin(), itCol) + mLabelParams.mRowNameIdx + 1)) = str;
       }
     }
 
@@ -1524,9 +1508,9 @@ namespace rapidcsv
 
         for (size_t i = 0; i < static_cast<size_t>(readLength); ++i)
         {
-          if (buffer[i] == mSeparatorParams.mQuoteChar)
+          if (buffer[i] == '"')
           {
-            if (cell.empty() || (cell[0] == mSeparatorParams.mQuoteChar))
+            if (cell.empty() || cell[0] == '"')
             {
               quoted = !quoted;
             }
@@ -1666,10 +1650,9 @@ namespace rapidcsv
           {
             // escape quotes in string
             std::string str = *itc;
-            const std::string quoteCharStr = std::string(1, mSeparatorParams.mQuoteChar);
-            ReplaceString(str, quoteCharStr, quoteCharStr + quoteCharStr);
+            ReplaceString(str, "\"", "\"\"");
 
-            pStream << quoteCharStr << str << quoteCharStr;
+            pStream << "\"" << str << "\"";
           }
           else
           {
@@ -1727,16 +1710,13 @@ namespace rapidcsv
 
     std::string Unquote(const std::string& pStr)
     {
-      if (mSeparatorParams.mAutoQuote && (pStr.size() >= 2) &&
-          (pStr.front() == mSeparatorParams.mQuoteChar) &&
-          (pStr.back() == mSeparatorParams.mQuoteChar))
+      if (mSeparatorParams.mAutoQuote && (pStr.size() >= 2) && (pStr.front() == '"') && (pStr.back() == '"'))
       {
         // remove start/end quotes
         std::string str = pStr.substr(1, pStr.size() - 2);
 
         // unescape quotes in string
-        const std::string quoteCharStr = std::string(1, mSeparatorParams.mQuoteChar);
-        ReplaceString(str, quoteCharStr + quoteCharStr, quoteCharStr);
+        ReplaceString(str, "\"\"", "\"");
 
         return str;
       }
