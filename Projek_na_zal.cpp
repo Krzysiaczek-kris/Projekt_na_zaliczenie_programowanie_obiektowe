@@ -1,5 +1,6 @@
 #include <iostream>
 #include <thread>
+
 #include "rapidcsv.h"
 
 using namespace std;
@@ -235,7 +236,7 @@ int main() {
 	}
 
 	quickstats_deaths( countries_vec[iter], labels_deaths, year, desktop );
-	
-	
+
+
 
 }
