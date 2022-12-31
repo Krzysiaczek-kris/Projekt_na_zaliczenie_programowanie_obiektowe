@@ -28,6 +28,7 @@
 #include <string>
 #include <typeinfo>
 #include <vector>
+#include <limits>
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
@@ -161,9 +162,13 @@ namespace rapidcsv
      */
     void ToVal(const std::string& pStr, T& pVal) const
     {
-        if ( pStr.empty() )
+        if ( pStr.empty() ) //my addition in order to handle empty strings for this project
         {
-			pVal = 0; //na potrzeby projektu, kiedy nie ma danych w komórce
+            if ( typeid( T ) == typeid( float ) || typeid( T ) == typeid( double ) || typeid(T) == typeid(long double) ){
+                pVal = std::numeric_limits<double>::quiet_NaN();
+                return;
+            }
+            pVal = 0;
             return;
         }
       try

@@ -143,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="stats.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Projek_na_zal.rc" />
