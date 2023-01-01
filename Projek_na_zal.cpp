@@ -94,11 +94,15 @@ struct result
 
 
 void loaddata_deaths( vector<country_deaths>& v, map<string, int>& countries, const Document& doc ) {
+	// Index of the current line in the csv file
 	int line = 0;
 	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
+		// 2D vector to store the data for a country
 		vector<vector<int>> data;
+		// Country code
 		string code = doc.GetCell<string>( "code", line );
 		for ( int i = 0; i < it->second; i++ ) {
+			// Vector to store the data for a year
 			vector<int> year;
 
 			for ( int j = 2; j < doc.GetColumnCount(); j++ ) {
@@ -107,12 +111,15 @@ void loaddata_deaths( vector<country_deaths>& v, map<string, int>& countries, co
 			data.push_back( year );
 			line++;
 		}
+		// Create a country_deaths object and add it to the vector
 		v.emplace_back( country_deaths{ it->first, code, data } );
 	}
 }
 
 void loaddata_HDI( vector<country_HDI>& v, map<string, int> labels, const Document& doc ) {
+	// loop through each row of the csv file
 	for ( int i = 0; i < doc.GetRowCount(); i++ ) {
+		// initialize variables to store information about the country
 		int col = 5;
 		string name = doc.GetCell<string>( "country", i );
 		string code = doc.GetCell<string>( "iso3", i );
@@ -122,48 +129,65 @@ void loaddata_HDI( vector<country_HDI>& v, map<string, int> labels, const Docume
 		int gii_rank = doc.GetCell<int>( "gii_rank_2021", i );
 		int rankdiff_hdi = doc.GetCell<int>( "rankdiff_hdi_phdi_2021", i );
 		vector<vector<double>> data;
+		// loop through each column of the csv file
 		for ( auto it = labels.begin(); it != labels.end(); it++ ) {
 			vector<double> year;
+			// loop through each year of data
 			for ( int j = 0; j < it->second; j++ ) {
 				year.push_back( doc.GetCell<double>( col, i ) );
 				col++;
 			}
 			data.push_back( year );
 		}
+		// store the information about the country in the vector
 		v.emplace_back( country_HDI{ name, code, rank, gdi_group, gii_rank, rankdiff_hdi, hdicode, data } );
 	}
 }
 
+// This function reads in the data from the Excel file.
+// It uses the map to determine how many lines of data to read in for each country.
 void loaddata_health( vector<country_Health>& v, map<string, int>& countries, const Document& doc ) {
+	// line keeps track of which line of data we are reading in.
 	int line = 0;
+	// For each country in the map
 	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
+		// Create a vector of vectors to store the data for each country
 		vector<vector<double>> data;
+		// Get the country code
 		string code = doc.GetCell<string>( "Country Code", line );
+		// For each year of data for the country
 		for ( int i = 0; i < it->second; i++ ) {
+			// Create a vector to store the data for a single year
 			vector<double> year;
+			// For each column in the data (the years)
 			for ( int j = 4; j < doc.GetColumnCount(); j++ ) {
+				// Read in the data for that year
 				year.push_back( doc.GetCell<double>( j, line ) );
 			}
+			// Add the year data to the vector of data for the country
 			data.push_back( year );
+			// Move to the next line
 			line++;
 		}
+		// Add the country data to the vector
 		v.emplace_back( country_Health{ it->first, code, data } );
 	}
 }
 
 void quickstats_deaths( const country_deaths& c, const vector<string>& labels, int year, const string& desktop ) {
+	// Opens file with name of country + year + "Death_Stats" + ".txt" on desktop
 	ofstream file( desktop + c.name + "_" + to_string( year ) + "_Death_Stats" + ".txt" );
 
+	// Writes to the file
 	file << "Country: " << c.name << endl;
 	file << "Years: " << year << endl << endl;
 
+	// Sets year to the index of the year in the data
 	year -= c.data[0][0];
-	int sum = 0;
 
-	for ( int i = 1; i < labels.size(); i++ ) {
-		sum += c.data[year][i];
-	}
+	sum = accumulate( c.data[year].begin(), c.data[year].end(), 0 );
 
+	// Writes the death statistics to the file
 	for ( int i = 1; i < labels.size(); i++ ) {
 		string first = labels[i] + ": " + to_string( c.data[year][i] );
 		int spaces = 100 - first.length();
@@ -172,8 +196,10 @@ void quickstats_deaths( const country_deaths& c, const vector<string>& labels, i
 		file << first << string( spaces, ' ' ) << second << endl;
 	}
 
+	// Writes the total to the file
 	file << endl << "Total: " << sum << endl << endl;
 
+	// Closes the file
 	file.close();
 }
 
@@ -197,7 +223,7 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 					if ( it_Health == v_Health.end() ) { // no matching data
 						continue;
 					}
-					int iter_Health = static_cast<int>( distance( v_Health.begin(), it_Health ) );
+					int iter_Health = static_cast<int>( distance( v_Health.begin(), it_Health ) ); // get index of matching element
 
 					vector<vector<int>> deaths = transposeMatrix( v.data ); // transpose matrix, to easily access values by years
 
@@ -212,14 +238,14 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 					res = abs( res ); //abs value because we want to see how strong the correlation is, not if it's positive or negative
 					if ( res > aprox ) {
 						ones++;
-						countries_appearances[v.name]++;
+						countries_appearances[v.name]++; //add country to map
 					}
 
 					results.push_back( res );
 					all_results.push_back( res );
 				}
 
-				stddevs.emplace_back( stddev( results ) );
+				stddevs.emplace_back( stddev( results ) ); //add stddev to vector
 			}
 		}
 
@@ -241,7 +267,7 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 		r.done = true;
 		r.working = false;
 		
-
+		//cout data and lock mutex
 	lock_guard<mutex> lock( cout_mutex );
 	cout << "\n\n\n Death and Health data: \n\n";
 	cout << r;
@@ -306,10 +332,10 @@ void death_hdi_stats( const vector<country_deaths>& countries_vec, const vector<
 	r.done = true;
 	r.working = false;
 
+	//cout data and lock mutex
 	lock_guard<mutex> lock( cout_mutex );
 	cout << "\n\n\n Death and HDI data: \n\n";
 	cout << r;
-
 
 }
 
@@ -370,12 +396,13 @@ void health_hdi_stats( const vector<country_Health>& v_Health, const vector<coun
 	r.done = true;
 	r.working = false;
 
+	//cout data and lock mutex
 	lock_guard<mutex> lock( cout_mutex );
 	cout << "\n\n\n Health and HDI data: \n\n";
 	cout << r;
 
 }
-
+// write vector with results to file
 void write_to_file( const vector<double>& v, const string& filename ) {
 	ofstream file( filename );
 	for ( auto d : v ) {
@@ -400,36 +427,39 @@ int main() {
 
 	auto very_start = chrono::high_resolution_clock::now();
 	//DEATH DATA
-	Document doc_deaths( "annual_deaths_by_causes.csv", LabelParams( 0 ) );
-	map <string, int> countries;
+	Document doc_deaths( "annual_deaths_by_causes.csv", LabelParams( 0 ) ); //create a document object
+	map <string, int> countries; //create a map with string keys and int values
 	//reading countries
-	for ( int i = 0; i < doc_deaths.GetRowCount(); i++ ) {
-		countries[doc_deaths.GetCell<string>( "country", i )]++;
+	for ( int i = 0; i < doc_deaths.GetRowCount(); i++ ) { //iterate over each row in the dataset
+		countries[doc_deaths.GetCell<string>( "country", i )]++; //increase the value of the corresponding key
 	}
 
-	vector<string> labels_deaths;
-	for ( int i = 2; i < doc_deaths.GetColumnCount(); i++ ) {
-		labels_deaths.push_back( doc_deaths.GetColumnName( i ) );
+	vector<string> labels_deaths; //create a vector of strings
+	for ( int i = 2; i < doc_deaths.GetColumnCount(); i++ ) { //iterate over each column in the dataset
+		labels_deaths.push_back( doc_deaths.GetColumnName( i ) ); //add the column name to the vector
 	}
 
-	vector<country_deaths> countries_vec;
+	vector<country_deaths> countries_vec; //create a vector of country_deaths objects
 
-	vector<thread> threads;
-	threads.emplace_back( loaddata_deaths, ref( countries_vec ), ref( countries ), ref( doc_deaths ) );
+	vector<thread> threads; //create a vector of threads
+	threads.emplace_back( loaddata_deaths, ref( countries_vec ), ref( countries ), ref( doc_deaths ) ); //add a thread to the vector, the thread executes the function loaddata_deaths with the parameters countries_vec, countries, and doc_deaths
 
 	//display countries and number of entries
-	for ( auto it = countries.begin(); it != countries.end(); it++ ) {
-		int spaces = 50 - it->first.length();
-		cout << it->first << string( spaces, ' ' ) << "Entries: " << it->second << endl;
+	for ( auto it = countries.begin(); it != countries.end(); it++ ) { //iterate over the map
+		cout << it->first << string( 50 - it->first.length(), ' ' ) << "Entries: " << it->second << endl; //output the country name, spaces, and the number of entries
 	}
-
-	cout << "Countries: " << countries.size() << endl;
-	cout << "Above you can see the countries and the number of entries you have in the dataset." << endl;
+	cout << "Countries: " << countries.size() << endl; //output the number of countries
+	cout << "Above you can see the countries and the number of entries you have in the dataset." << endl; //output an explanation
 
 	//HEALTH DATA -----------------------------------------------------------------------
+	//this code loads the data from the health.csv file and stores it in a vector of type country_health
+	//it is similar to the code above
+
 	Document doc_health( "health.csv", LabelParams( 0 ) );
 	vector<country_Health> v_Health;
+
 	map <string, int> countries_health;
+
 
 	for ( int i = 0; i < doc_health.GetRowCount(); i++ ) {
 		countries_health[doc_health.GetCell<string>( "Country Name", i )]++;
@@ -440,9 +470,15 @@ int main() {
 		labels_health.push_back( doc_health.GetCell<string>( "Series Name", i ) );
 	}
 
+
 	threads.emplace_back( loaddata_health, ref( v_Health ), ref( countries_health ), ref( doc_health ) );
 
 	//HDI DATA ---------------------------------------------------------------------------
+	// this code loads the data from the HDI.csv file and stores it in a vector of type country_HDI
+	// the labels_HDI map is used to store the names of the countries and the number of times they appear in the file
+	// this is used later to determine the number of countries in the data set
+	// the function loaddata_HDI() is called and passed the vector, map, and the document
+
 	Document doc_HDI( "HDI.csv", LabelParams( 0 ) );
 	vector<country_HDI> v_HDI;
 	map <string, int> labels_HDI;
@@ -459,45 +495,50 @@ int main() {
 	threads.emplace_back( loaddata_HDI, ref( v_HDI ), ref( labels_HDI ), ref( doc_HDI ) );
 	//REST OF THE PROGRAM ----------------------------------------------------------------
 
+	//get the desktop path
 	char* buff = nullptr;
 	_dupenv_s( &buff, 0, "USERPROFILE" );
 	string desktop = buff;
 	desktop += "\\Desktop\\";
+	free( buff );
 
 	string input;
 	cout << "\nWhat do you want to do with that data?" << endl;
 	
 	write_info();
 
+	//wait for the threads to finish
 	for ( auto& thread : threads ) {
 		thread.join();
 	}
 	threads.clear();
 
+	//create the results objects
 	result result1, result2, result3;
 	
 	//program loop
 	while ( true ) {
 
 		cin >> input;
-		transform( input.begin(), input.end(), input.begin(), ::tolower );
+		transform( input.begin(), input.end(), input.begin(), ::tolower ); //convert the input to lowercase
 
 		if ( input == "cdhe" || input == "1" ) {
 			
-			if ( result1.working ) continue;
+			if ( result1.working ) continue; //if the thread is already working, skip this iteration
 			if ( result1.done )
 			{
-				cout << result1;
-				cout << "Do you want to save the results to a file? (y/n)" << endl;
+				cout << result1; //output the results
+				cout << "Do you want to save the results to a file? (y/n)" << endl; 
 				cin >> input;
 				transform( input.begin(), input.end(), input.begin(), ::tolower );
 				if ( input == "yes" || input == "y" )
 				{
-					write_to_file( result1.res, desktop + "cdhe.txt" );
+					write_to_file( result1.res, desktop + "cdhe.txt" ); //write the results to a file
 				}
 				continue;
 			}
-			result1.working = true;
+			result1.working = true; //set the working flag to true
+			//create a thread and run the death_health_stats function with the parameters
 			threads.emplace_back( death_health_stats, ref( countries_vec ), ref( v_Health ), ref( labels_deaths ), ref( labels_health ), ref( result1 ) );
 
 		} else
@@ -566,6 +607,7 @@ int main() {
 			cout << "Enter Country name:" << endl;
 			string country_name;
 			cin >> country_name;
+			//capitalize first letter of each word in country name
 			for ( int i = 0; i < country_name.size(); i++ ) {
 				if ( i == 0 || country_name[i - 1] == ' ' ) {
 					country_name[i] = toupper( country_name[i] );
@@ -581,14 +623,14 @@ int main() {
 			cout << "Choose year:" << endl;
 			int year;
 			cin >> year;
-			quickstats_deaths( countries_vec[iter], labels_deaths, year, desktop );
+			quickstats_deaths( countries_vec[iter], labels_deaths, year, desktop ); 
 
 		} else
 		if ( input == "set" || input =="6" ) {
 
 
-			system( "cls" );
-			cout << "Current settings: " << endl;
+			system( "cls" ); //clear screen
+			cout << "Current settings: " << endl; 
 			cout << "1. Listing " << top_results << " top results" << endl;
 			cout << "2. High correlation value ( 0 - 1 ), now it is " << aprox << endl;
 			cout << "3. To exit write e or exit " << endl;
@@ -610,7 +652,7 @@ int main() {
 					else
 						if ( input_settings == "3" || input_settings == "e" || input_settings == "exit" )
 						{
-							system( "cls" );
+							system( "cls" ); 
 							write_info();
 							break;
 						}
@@ -620,7 +662,7 @@ int main() {
 		} else
 		if ( input == "exit" || input == "7" ) {
 			for ( auto& t : threads ) {
-				if ( t.joinable() ) {
+				if ( t.joinable() ) { //if thread is still working wait for it to finish
 					cout << " Waiting for all threads to finish job" << endl;
 					for ( auto& thread : threads ) {
 						thread.join();
@@ -628,17 +670,19 @@ int main() {
 					break;
 				}
 			}
-			cout << "Do you want to save your results?" << endl;
-			cin >> input;
-			if ( input == "yes" || input == "y" ) {
-				if ( result1.done ) {
-					write_to_file( result1.res, desktop + "cdhe.txt" );
-				}
-				if ( result2.done ) {
-					write_to_file( result2.res, desktop + "cdhd.txt" );
-				}
-				if ( result3.done ) {
-					write_to_file( result3.res, desktop + "cdhh.txt" );
+			if ( result1.done || result2.done || result3.done ) { //if any of the results are done ask if user wants to save them
+				cout << "Do you want to save your results?" << endl;
+				cin >> input;
+				if ( input == "yes" || input == "y" ) {
+					if ( result1.done ) {
+						write_to_file( result1.res, desktop + "cdhe.txt" );
+					}
+					if ( result2.done ) {
+						write_to_file( result2.res, desktop + "cdhd.txt" );
+					}
+					if ( result3.done ) {
+						write_to_file( result3.res, desktop + "cdhh.txt" );
+					}
 				}
 			}
 

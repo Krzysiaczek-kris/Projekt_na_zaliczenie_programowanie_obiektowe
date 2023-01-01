@@ -34,14 +34,20 @@ inline double stddev( const vector<T>& v ) {
     return sqrt( inner_product( v.begin(), v.end(), v.begin(), 0.0 ) / ( v.size() - 1 ) );
 }
 
+// Calculate the Pearson correlation coefficient of two vectors
 template <typename T1, typename T2>
 double pearson( const vector<T1>& x, const vector<T2>& y ) {
+    // Get the length of the shortest vector
     int n = min( x.size(), y.size() );
+    // Calculate the mean of each vector
     double mean_x = mean( x );
     double mean_y = mean( y );
+    // Calculate the standard deviation of each vector
     double stddev_x = stddev( x );
     double stddev_y = stddev( y );
+	// Calculate the sum of the products of the vectors
 	double sum_xy = inner_product( x.begin(), x.begin() + n, y.begin(), 0.0 );
+    // Return the Pearson correlation coefficient
     return sum_xy / ( n * stddev_x * stddev_y );
 }
 
