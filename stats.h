@@ -26,21 +26,12 @@ void printMatrix( const vector<vector<T>>& v ) {
 
 template <typename T>
 inline double mean( const vector<T>& v ) {
-    double sum = 0.0;
-    for ( int i = 0; i < v.size(); i++ ) {
-        sum += v[i];
-    }
-    return sum / v.size();
+    return accumulate( v.begin(), v.end(), 0.0 ) / v.size();
 }
 
 template <typename T>
-double stddev( const vector<T>& v ) {
-    double mean_v = mean( v );
-    double sum_squared_differences = 0.0;
-    for ( int i = 0; i < v.size(); i++ ) {
-        sum_squared_differences += pow( v[i] - mean_v, 2 );
-    }
-    return sqrt( sum_squared_differences / ( v.size() - 1 ) );
+inline double stddev( const vector<T>& v ) {
+    return sqrt( inner_product( v.begin(), v.end(), v.begin(), 0.0 ) / ( v.size() - 1 ) );
 }
 
 template <typename T1, typename T2>
@@ -50,10 +41,7 @@ double pearson( const vector<T1>& x, const vector<T2>& y ) {
     double mean_y = mean( y );
     double stddev_x = stddev( x );
     double stddev_y = stddev( y );
-    double sum_xy = 0.0;
-    for ( int i = 0; i < n; i++ ) {
-        sum_xy += ( x[i] - mean_x ) * ( y[i] - mean_y );
-    }
+	double sum_xy = inner_product( x.begin(), x.begin() + n, y.begin(), 0.0 );
     return sum_xy / ( n * stddev_x * stddev_y );
 }
 
@@ -81,12 +69,6 @@ double spearman( const vector<T1>& x, const vector<T2>& y ) {
 
     // Calculate the Spearman rank correlation coefficient
     return 1 - ( 6 * sum_diff_squared ) / ( n * ( n * n - 1 ) );
-}
-
-
-template <typename T1, typename T2>
-double r_squared( const vector<T1>& x, const vector <T2>& y ) {
-	return pow( pearson( x, y ), 2 );
 }
 
 template <typename T>

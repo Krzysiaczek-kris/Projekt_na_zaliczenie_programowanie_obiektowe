@@ -10,6 +10,7 @@ using namespace std;
 using namespace rapidcsv;
 
 double aprox = 0.99;
+int top_results = 25;
 
 mutex cout_mutex;
 
@@ -79,19 +80,17 @@ struct result
 		os << "Time taken: " << r.time << "ms" << endl;
 
 		os << "Nans: " << r.nans << endl;
-		os << "High values: " << r.ones << "\n\n\n";
-		//cout_mutex.unlock();
+		os << "High values: " << r.ones << "\n\n\n"; 
 
-		os << "Entries with corr over " << aprox << " per country:" << endl;
-		//show 25 top results
-		for ( int i = 0; i < 25; i++ ) {
+		os << top_results << " entries with correlation over " << aprox << " per country:" << endl;
+		
+		for ( int i = 0; i < top_results; i++ ) {
 			os << r.v[i].first << string( 50 - r.v[i].first.size(), ' ' ) << r.v[i].second << '\n';
 		}
 		return os;
 	}
 
 };
-
 
 
 void loaddata_deaths( vector<country_deaths>& v, map<string, int>& countries, const Document& doc ) {
@@ -202,7 +201,9 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 
 					vector<vector<int>> deaths = transposeMatrix( v.data ); // transpose matrix, to easily access values by years
 
+
 					double res = spearman( deaths[j], v_Health[iter_Health].data[i] );
+					//double res = pearson( deaths[j], v_Health[iter_Health].data[i] );
 					//if res is nan, skip
 					if ( _isnan( res ) ) {
 						nans++;
@@ -309,6 +310,7 @@ void death_hdi_stats( const vector<country_deaths>& countries_vec, const vector<
 	cout << "\n\n\n Death and HDI data: \n\n";
 	cout << r;
 
+
 }
 
 void health_hdi_stats( const vector<country_Health>& v_Health, const vector<country_HDI>& v_HDI, const vector<string>& labels_health, const map<string, int>& labels_HDI, result& r ) {
@@ -382,6 +384,17 @@ void write_to_file( const vector<double>& v, const string& filename ) {
 	file.close();
 }
 
+void write_info()
+{
+	cout << "1. See the correlation between the number of deaths and the health data - write cdhe" << endl;
+	cout << "2. See the correlation between the number of deaths and the HDI data - write cdhd" << endl;
+	cout << "3. See the correlation between the health data and the HDI data - write chh" << endl;
+	cout << "4. All of the above - write all" << endl;
+	cout << "5. See the statistics on the distribution of causes of death by country and year - write qsd" << endl;
+	cout << "6. Settings - write settings" << endl;
+	cout << "7. Exit - write exit" << endl;
+}
+
 
 int main() {
 
@@ -451,30 +464,20 @@ int main() {
 	string desktop = buff;
 	desktop += "\\Desktop\\";
 
-	
-	cout << "\nWhat do you want to do with that data?" << endl;
 	string input;
-	cout << "1. See the correlation between the number of deaths and the health data - write cdhe" << endl;
-	cout << "2. See the correlation between the number of deaths and the HDI data - write cdhd" << endl;
-	cout << "3. See the correlation between the health data and the HDI data - write chh" << endl;
-	cout << "4. All of the above - write all" << endl;
-	cout << "5. See the statistics on the distribution of causes of death by country and year - write qsd" << endl;
-	cout << "6. Settings - write settings" << endl;
-	cout << "7. Exit - write exit" << endl;
-
-	//cin >> input; //first input can be performed before the threads are finished
-	//transform( input.begin(), input.end(), input.begin(), ::tolower );
+	cout << "\nWhat do you want to do with that data?" << endl;
+	
+	write_info();
 
 	for ( auto& thread : threads ) {
 		thread.join();
 	}
 	threads.clear();
 
-
 	result result1, result2, result3;
 	
-
-	while ( input != "exit" ) {
+	//program loop
+	while ( true ) {
 
 		cin >> input;
 		transform( input.begin(), input.end(), input.begin(), ::tolower );
@@ -485,6 +488,13 @@ int main() {
 			if ( result1.done )
 			{
 				cout << result1;
+				cout << "Do you want to save the results to a file? (y/n)" << endl;
+				cin >> input;
+				transform( input.begin(), input.end(), input.begin(), ::tolower );
+				if ( input == "yes" || input == "y" )
+				{
+					write_to_file( result1.res, desktop + "cdhe.txt" );
+				}
 				continue;
 			}
 			result1.working = true;
@@ -496,16 +506,28 @@ int main() {
 			if ( result2.working ) continue;
 			if ( result2.done ) {
 				cout << result2;
+				cout << "Do you want to save the results to a file? (y/n)" << endl;
+				cin >> input;
+				transform( input.begin(), input.end(), input.begin(), ::tolower );
+				if ( input == "yes" || input == "y" ) {
+					write_to_file( result2.res, desktop + "cdhd.txt" );
+				}
 				continue;
 			}
 			result2.working = true;
 			threads.emplace_back( death_hdi_stats, ref( countries_vec ), ref( v_HDI ), ref( labels_deaths ), ref( labels_HDI ), ref( result2 ) );
 
 		} else
-		if ( input == "cdhd" || input == "3" ) {
+		if ( input == "cdhh" || input == "3" ) {
 			if ( result3.working ) continue;
 			if ( result3.done ) {
 				cout << result3;
+				cout << "Do you want to save the results to a file? (y/n)" << endl;
+				cin >> input;
+				transform( input.begin(), input.end(), input.begin(), ::tolower );
+				if ( input == "yes" || input == "y" ) {
+					write_to_file( result3.res, desktop + "cdhh.txt" );
+				}
 				continue;
 			}
 			result3.working = true;
@@ -564,8 +586,36 @@ int main() {
 		} else
 		if ( input == "set" || input =="6" ) {
 
-			cout << "PH" << endl;
 
+			system( "cls" );
+			cout << "Current settings: " << endl;
+			cout << "1. Listing " << top_results << " top results" << endl;
+			cout << "2. High correlation value ( 0 - 1 ), now it is " << aprox << endl;
+			cout << "3. To exit write e or exit " << endl;
+			string input_settings;
+
+			while ( true )
+			{
+				cin >> input_settings;
+				//transform( input_settings.begin(), input.end(), input.begin(), ::tolower );
+				if ( input_settings == "1" ) {
+					cout << "Enter new value for top results: " << endl;
+					cin >> top_results;
+				}
+				else
+					if ( input_settings == "2" ) {
+						cout << "Enter new high correlation value: " << endl;
+						cin >> aprox;
+					}
+					else
+						if ( input_settings == "3" || input_settings == "e" || input_settings == "exit" )
+						{
+							system( "cls" );
+							write_info();
+							break;
+						}
+			}
+			
 
 		} else
 		if ( input == "exit" || input == "7" ) {
@@ -578,9 +628,20 @@ int main() {
 					break;
 				}
 			}
-			//cout << "Do you want to save your results?" << endl;
-			
-			
+			cout << "Do you want to save your results?" << endl;
+			cin >> input;
+			if ( input == "yes" || input == "y" ) {
+				if ( result1.done ) {
+					write_to_file( result1.res, desktop + "cdhe.txt" );
+				}
+				if ( result2.done ) {
+					write_to_file( result2.res, desktop + "cdhd.txt" );
+				}
+				if ( result3.done ) {
+					write_to_file( result3.res, desktop + "cdhh.txt" );
+				}
+			}
+
 			auto very_end = chrono::high_resolution_clock::now();
 			double time = chrono::duration_cast<chrono::milliseconds>( very_end - very_start ).count();
 			time *= 0.0018;
@@ -588,22 +649,18 @@ int main() {
 
 			return 0;
 			
-		} else
+		}else
+		if ( input == "help" || input == "h" ) write_info();
+		else
 		cout << "Wrong input!" << endl;
 
 	}
-	
 
-	// Wait for all threads to finish
-	for ( auto& thread : threads ) {
-		thread.join();
-	}
+	//for ( auto& thread : threads ) {
+	//	thread.join();
+	//}
 	//threads.clear();
 
-	//write_to_file( result1, desktop + "result1.txt" );
-	//write_to_file( result2, desktop + "result2.txt" );
-	//write_to_file( result3, desktop + "result3.txt" );
-
-	return 0;
+	//return 0;
 
 }
