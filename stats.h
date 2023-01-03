@@ -39,9 +39,6 @@ template <typename T1, typename T2>
 double pearson( const vector<T1>& x, const vector<T2>& y ) {
     // Get the length of the shortest vector
     int n = min( x.size(), y.size() );
-    // Calculate the mean of each vector
-    double mean_x = mean( x );
-    double mean_y = mean( y );
     // Calculate the standard deviation of each vector
     double stddev_x = stddev( x );
     double stddev_y = stddev( y );
@@ -63,12 +60,13 @@ double spearman( const vector<T1>& x, const vector<T2>& y ) {
     vector<int> y_rank( n );
     iota( x_rank.begin(), x_rank.end(), 1 );
     iota( y_rank.begin(), y_rank.end(), 1 );
-    sort( x_rank.begin(), x_rank.end(), [&] ( int i, int j ) { return x_truncated[i - 1] < x_truncated[j - 1]; } );
-    sort( y_rank.begin(), y_rank.end(), [&] ( int i, int j ) { return y_truncated[i - 1] < y_truncated[j - 1]; } );
+    sort( x_rank.begin(), x_rank.end(), [&] ( const int i, const int j ) { return x_truncated[i - 1] < x_truncated[j - 1]; } );
+    sort( y_rank.begin(), y_rank.end(), [&] ( const int i, const int j ) { return y_truncated[i - 1] < y_truncated[j - 1]; } );
 
     // Calculate the difference between ranks for each element
     vector<double> diff( n );
-    transform( x_rank.begin(), x_rank.end(), y_rank.begin(), diff.begin(), minus<double>() );
+    transform( x_rank.begin(), x_rank.end(), y_rank.begin(), diff.begin(), minus<>() );
+
 
     // Calculate the sum of the squares of the differences
     double sum_diff_squared = inner_product( diff.begin(), diff.end(), diff.begin(), 0.0 );
