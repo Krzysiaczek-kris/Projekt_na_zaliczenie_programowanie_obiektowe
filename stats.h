@@ -69,7 +69,7 @@ double spearman( const vector<T1>& x, const vector<T2>& y ) {
 
 
     // Calculate the sum of the squares of the differences
-    double sum_diff_squared = inner_product( diff.begin(), diff.end(), diff.begin(), 0.0 );
+    const double sum_diff_squared = inner_product( diff.begin(), diff.end(), diff.begin(), 0.0 );
 
     // Calculate the Spearman rank correlation coefficient
     return 1 - ( 6 * sum_diff_squared ) / ( n * ( n * n - 1 ) );

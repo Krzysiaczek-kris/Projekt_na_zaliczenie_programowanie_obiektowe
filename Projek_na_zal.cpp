@@ -560,7 +560,7 @@ int main() {
 								cin >> input;
 								transform( input.begin(), input.end(), input.begin(), ::tolower );
 								if ( input == "yes" || input == "y" ) {
-									write_to_file( result3.res, desktop + "cdhh.txt" );
+									write_to_file( result3.res, desktop + "chh.txt" );
 
 								}
 							}
@@ -681,7 +681,7 @@ int main() {
 													result2.saved = true;
 												}
 												if ( result3.done && !result3.saved ) {
-													write_to_file( result3.res, desktop + "cdhh.txt" );
+													write_to_file( result3.res, desktop + "chh.txt" );
 													result3.saved = true;
 												}
 											}
