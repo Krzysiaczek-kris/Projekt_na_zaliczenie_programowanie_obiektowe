@@ -65,7 +65,7 @@ double spearman( const vector<T1>& x, const vector<T2>& y ) {
 
     // Calculate the difference between ranks for each element
     vector<double> diff( n );
-    transform( x_rank.begin(), x_rank.end(), y_rank.begin(), diff.begin(), minus<>() );
+    transform( x_rank.begin(), x_rank.end(), y_rank.begin(), diff.begin(), minus() );
 
 
     // Calculate the sum of the squares of the differences

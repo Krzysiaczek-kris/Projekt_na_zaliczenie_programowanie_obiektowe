@@ -175,7 +175,7 @@ void loaddata_health( vector<country_Health>& v, const map<string, int>& countri
 
 void quickstats_deaths( const country_deaths& c, const vector<string>& labels, int year, const string& desktop ) {
 	// Opens file with name of country + year + "Death_Stats" + ".txt" on desktop
-	ofstream file( desktop + c.name + "_" + to_string( year ) + "_Death_Stats" + ".txt" );
+	ofstream file( desktop + c.name + "_" + to_string( year ) + "_Death_Stats.txt" );
 
 	// Writes to the file
 	file << "Country: " << c.name << endl;
@@ -184,7 +184,7 @@ void quickstats_deaths( const country_deaths& c, const vector<string>& labels, i
 	// Sets year to the index of the year in the data
 	year -= c.data[0][0];
 
-	double sum = accumulate( c.data[year].begin(), c.data[year].end(), 0 );
+	const double sum = accumulate( c.data[year].begin(), c.data[year].end(), 0 );
 
 	// Writes the death statistics to the file
 	for ( int i = 1; i < labels.size(); i++ ) {
@@ -220,7 +220,7 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 				if ( it_Health == v_Health.end() ) { // no matching data
 					continue;
 				}
-				int iter_Health = static_cast<int>( distance( v_Health.begin(), it_Health ) ); // get index of matching element
+				const int iter_Health = static_cast<int>( distance( v_Health.begin(), it_Health ) ); // get index of matching element
 
 				vector<vector<int>> deaths = transposeMatrix( v.data ); // transpose matrix, to easily access values by years
 
@@ -258,14 +258,14 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 	r.ones = ones;
 	all_results.shrink_to_fit();
 	v.shrink_to_fit();
-	r.res = move( all_results );
-	r.v = move( v );
+	r.res = std::move( all_results );
+	r.v = std::move( v );
 	r.time = chrono::duration_cast<chrono::milliseconds>( end - start ).count();
 	r.done = true;
 	r.working = false;
 
 	//cout data and lock mutex
-	lock_guard<mutex> lock( cout_mutex );
+	lock_guard lock( cout_mutex );
 	cout << "\n\n\n Death and Health data: \n\n";
 	cout << r;
 }
@@ -279,9 +279,9 @@ void death_hdi_stats( const vector<country_deaths>& countries_vec, const vector<
 
 	//time start
 	const auto start = chrono::high_resolution_clock::now();
-
+	int temp = 0;
 	for ( auto it = labels_HDI.begin(); it != labels_HDI.end(); it++ ) {
-		int temp = 0;
+		
 		for ( int j = 1; j < labels_deaths.size(); j++ ) { // first label is year, and we skip it
 			vector<double> results;
 			for ( auto v : countries_vec ) {
@@ -323,14 +323,14 @@ void death_hdi_stats( const vector<country_deaths>& countries_vec, const vector<
 	r.ones = ones;
 	all_results.shrink_to_fit();
 	v.shrink_to_fit();
-	r.res = move( all_results );
-	r.v = move( v );
+	r.res = std::move( all_results );
+	r.v = std::move( v );
 	r.time = chrono::duration_cast<chrono::milliseconds>( end - start ).count();
 	r.done = true;
 	r.working = false;
 
 	//cout data and lock mutex
-	lock_guard<mutex> lock( cout_mutex );
+	lock_guard lock( cout_mutex );
 	cout << "\n\n\n Death and HDI data: \n\n";
 	cout << r;
 }
@@ -386,21 +386,21 @@ void health_hdi_stats( const vector<country_Health>& v_Health, const vector<coun
 	r.ones = ones;
 	all_results.shrink_to_fit();
 	v.shrink_to_fit();
-	r.v = move( v );
-	r.res = move( all_results );
+	r.v = std::move( v );
+	r.res = std::move( all_results );
 	r.time = chrono::duration_cast<chrono::milliseconds>( end - start ).count();
 	r.done = true;
 	r.working = false;
 
 	//cout data and lock mutex
-	lock_guard<mutex> lock( cout_mutex );
+	lock_guard lock( cout_mutex );
 	cout << "\n\n\n Health and HDI data: \n\n";
 	cout << r;
 }
 // write vector with results to file
 void write_to_file( const vector<double>& v, const string& filename ) {
 	ofstream file( filename );
-	for ( auto d : v ) {
+	for ( const auto d : v ) {
 		file << d << endl;
 	}
 	file.close();
@@ -667,8 +667,7 @@ int main() {
 									}
 									threads.clear();
 
-									if ( result1.done || result2.done || result3.done ) { //if any of the results are done ask if user wants to save them
-										if ( !result1.saved || !result2.saved || !result3.saved ) {
+									if ( ( result1.done && !result1.saved ) || ( result2.done && !result2.saved ) || ( result3.done && !result3.saved ) ) { //if any of the results are done ask if user wants to save them
 											cout << "Do you want to save all your results?" << endl;
 											cin >> input;
 											transform( input.begin(), input.end(), input.begin(), ::tolower );
@@ -686,7 +685,6 @@ int main() {
 													result3.saved = true;
 												}
 											}
-										}
 									}
 
 									const auto very_end = chrono::high_resolution_clock::now();
