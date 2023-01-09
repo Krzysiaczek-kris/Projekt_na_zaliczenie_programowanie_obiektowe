@@ -220,11 +220,10 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 				if ( it_Health == v_Health.end() ) { // no matching data
 					continue;
 				}
-				const int iter_Health = static_cast<int>( distance( v_Health.begin(), it_Health ) ); // get index of matching element
 
 				vector<vector<int>> deaths = transposeMatrix( v.data ); // transpose matrix, to easily access values by years
 
-				double res = spearman( deaths[j], v_Health[iter_Health].data[i] );
+				double res = spearman( deaths[j], it_Health->data[i] );
 
 				//if res is nan, skip
 				if ( _isnan( res ) ) {
@@ -256,7 +255,7 @@ void death_health_stats( const vector<country_deaths>& countries_vec, const vect
 	r.size_per_country = all_results.size() / countries_appearances.size();
 	r.nans = nans;
 	r.ones = ones;
-	all_results.shrink_to_fit();
+	all_results.shrink_to_fit(); //free memory
 	v.shrink_to_fit();
 	r.res = std::move( all_results );
 	r.v = std::move( v );
@@ -344,7 +343,7 @@ void health_hdi_stats( const vector<country_Health>& v_Health, const vector<coun
 
 	//time start
 	const auto start = chrono::high_resolution_clock::now();
-
+	int temp = 0;
 	for ( auto it = labels_HDI.begin(); it != labels_HDI.end(); it++ ) {
 		for ( int i = 0; i < labels_health.size(); i++ ) {
 			vector<double> results;
@@ -355,7 +354,7 @@ void health_hdi_stats( const vector<country_Health>& v_Health, const vector<coun
 					continue;
 				}
 
-				double res = spearman( v.data[i], it_HDI->data[0] );
+				double res = spearman( v.data[i], it_HDI->data[temp] );
 				if ( _isnan( res ) ) {
 					nans++;
 					continue;
@@ -370,6 +369,7 @@ void health_hdi_stats( const vector<country_Health>& v_Health, const vector<coun
 			}
 			stddevs.emplace_back( stddev( results ) );
 		}
+		temp++;
 	}
 
 	//sort map by second value
@@ -504,6 +504,11 @@ int main() {
 		thread.join();
 	}
 	threads.clear();
+
+	// free unnecessary memory
+	countries_vec.shrink_to_fit();
+	v_Health.shrink_to_fit();
+	v_HDI.shrink_to_fit();
 
 	//create the results objects
 	result result1, result2, result3;
